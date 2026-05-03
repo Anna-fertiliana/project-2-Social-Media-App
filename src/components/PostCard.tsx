@@ -1,8 +1,9 @@
 "use client";
 
-import { MessageCircle, Send, Bookmark } from "lucide-react";
+import { MessageCircle, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import LikeButton from "@/components/LikeButton";
+import SaveButton from "@/components/SaveButton";
 import { useRef } from "react";
 
 type PostCardProps = {
@@ -14,6 +15,7 @@ type PostCardProps = {
   likes: number;
   comments: number;
   isLiked?: boolean;
+  isSaved?: boolean; // 🔥 tambahan
   onOpen?: () => void;
 };
 
@@ -26,6 +28,7 @@ export default function PostCard({
   likes,
   comments,
   isLiked = false,
+  isSaved = false,
   onOpen,
 }: PostCardProps) {
   const router = useRouter();
@@ -37,14 +40,16 @@ export default function PostCard({
     router.push(`/users/${username}`);
   };
 
-  // 👉 double tap like
+  // 👉 DOUBLE TAP LIKE (trigger LikeButton)
+  const likeRef = useRef<HTMLButtonElement | null>(null);
+
   const handleDoubleTap = () => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
 
     if (lastTap.current && now - lastTap.current < DOUBLE_PRESS_DELAY) {
-      // trigger like (optional: bisa pakai global state nanti)
-      console.log("DOUBLE TAP LIKE ❤️");
+      // trigger click ke LikeButton
+      likeRef.current?.click();
     }
 
     lastTap.current = now;
@@ -93,11 +98,13 @@ export default function PostCard({
           <div className="flex items-center gap-4">
 
             {/* LIKE */}
-            <LikeButton
-              postId={postId}
-              initialLiked={isLiked}
-              initialCount={likes}
-            />
+            <div ref={likeRef as any}>
+              <LikeButton
+                postId={postId}
+                initialLiked={isLiked}
+                initialCount={likes}
+              />
+            </div>
 
             {/* COMMENT */}
             <button
@@ -112,7 +119,13 @@ export default function PostCard({
             <button
               onClick={() => {
                 const url = `${window.location.origin}/posts/${postId}`;
-                navigator.clipboard.writeText(url);
+
+                if (navigator.share) {
+                  navigator.share({ url });
+                } else {
+                  navigator.clipboard.writeText(url);
+                  alert("Link copied!");
+                }
               }}
               className="flex items-center gap-1 text-zinc-400 hover:text-white transition"
             >
@@ -121,10 +134,11 @@ export default function PostCard({
 
           </div>
 
-          {/* SAVE */}
-          <button className="text-zinc-400 hover:text-white transition">
-            <Bookmark size={20} />
-          </button>
+          {/* 🔥 SAVE (API CONNECTED) */}
+          <SaveButton
+            postId={postId}
+            initialSaved={isSaved}
+          />
 
         </div>
 

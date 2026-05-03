@@ -9,11 +9,11 @@ import { axiosInstance } from "@/lib/axios";
 import {
   MessageCircle,
   Send,
-  Bookmark,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import LikeButton from "@/components/LikeButton";
+import SaveButton from "@/components/SaveButton";
 
 type Props = {
   postId: string;
@@ -29,20 +29,19 @@ export default function PostViewer({
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState("");
 
-  // lock scroll
+
   useEffect(() => {
-  if (variant !== "modal") return;
+    if (variant !== "modal") return;
 
-  const original = document.body.style.overflow;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
 
-  document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [variant]);
 
-  return () => {
-    document.body.style.overflow = original;
-  };
-}, [variant]);
-
-  // ================= FETCH
+  //  FETCH POST
   const { data, isLoading } = useQuery({
     queryKey: ["post", postId],
     queryFn: async () => {
@@ -53,7 +52,7 @@ export default function PostViewer({
 
   const post = data?.data;
 
-  // ================= COMMENT
+  //  COMMENT
   const commentMutation = useMutation({
     mutationFn: async () => {
       return axiosInstance.post(`/api/posts/${postId}/comments`, {
@@ -66,37 +65,49 @@ export default function PostViewer({
     },
   });
 
+  //  LOADING
   if (isLoading) {
-    return <p className="text-white text-center mt-10">Loading...</p>;
+    return (
+      <div className="text-white text-center mt-10 animate-pulse">
+        Loading post...
+      </div>
+    );
   }
 
   if (!post) return null;
 
+  // MAIN CONTENT
   const content = (
-    <div className="
+    <div
+      className="
       w-full h-full
       md:w-[900px] md:h-[600px]
       bg-zinc-900 rounded-none md:rounded-2xl
       overflow-hidden
       flex flex-col md:flex-row
-    ">
-
+    "
+    >
       {/* IMAGE */}
       <div className="w-full md:w-1/2 bg-black">
         <img
           src={post.imageUrl || "/placeholder.png"}
+          onError={(e) =>
+            (e.currentTarget.src = "/placeholder.png")
+          }
           className="w-full h-[300px] md:h-full object-cover"
         />
       </div>
 
       {/* RIGHT */}
       <div className="w-full md:w-1/2 flex flex-col">
-
         {/* HEADER */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
           <div className="flex items-center gap-3">
             <img
               src={post.author?.avatarUrl || "/avatar.png"}
+              onError={(e) =>
+                (e.currentTarget.src = "/avatar.png")
+              }
               className="w-8 h-8 rounded-full"
             />
             <span className="text-white text-sm font-semibold">
@@ -122,7 +133,9 @@ export default function PostViewer({
         {/* COMMENTS */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 text-sm">
           {post.comments?.length === 0 ? (
-            <p className="text-gray-500 text-center">No comments yet</p>
+            <p className="text-gray-500 text-center">
+              No comments yet
+            </p>
           ) : (
             post.comments?.map((c: any) => (
               <div key={c.id} className="flex gap-3">
@@ -143,17 +156,17 @@ export default function PostViewer({
 
         {/* ACTION */}
         <div className="border-t border-zinc-800 px-4 py-3 space-y-2">
-
           {/* ICONS */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
-
+              {/* LIKE */}
               <LikeButton
                 postId={postId}
                 initialLiked={post.likedByMe}
                 initialCount={post.likeCount}
               />
 
+              {/* COMMENT COUNT */}
               <div className="flex items-center gap-1 text-zinc-400">
                 <MessageCircle size={20} />
                 <span className="text-xs text-white">
@@ -161,40 +174,59 @@ export default function PostViewer({
                 </span>
               </div>
 
+              {/* SHARE */}
               <button
-                className="text-zinc-400 hover:text-white"
                 onClick={() => {
                   const url = `${window.location.origin}/posts/${postId}`;
-                  navigator.clipboard.writeText(url);
+
+                  if (navigator.share) {
+                    navigator.share({ url });
+                  } else {
+                    navigator.clipboard.writeText(url);
+                    alert("Link copied!");
+                  }
                 }}
+                className="text-zinc-400 hover:text-white transition"
               >
                 <Send size={20} />
               </button>
             </div>
 
-            <Bookmark className="text-zinc-400 hover:text-white" size={20} />
+            {/* SAVE */}
+            <SaveButton
+              postId={postId}
+              initialSaved={post.savedByMe}
+            />
           </div>
 
-          {/* INPUT */}
+          {/* INPUT COMMENT */}
           <div className="flex items-center gap-2 border-t border-zinc-800 pt-3">
-            <button className="text-zinc-400">😊</button>
-
             <input
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Add a comment..."
               className="flex-1 bg-transparent outline-none text-sm text-white"
-              onKeyDown={(e) =>
-                e.key === "Enter" && commentMutation.mutate()
-              }
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  !commentMutation.isPending
+                ) {
+                  commentMutation.mutate();
+                }
+              }}
             />
 
             <button
               onClick={() => commentMutation.mutate()}
-              disabled={!commentText.trim()}
+              disabled={
+                !commentText.trim() ||
+                commentMutation.isPending
+              }
               className="text-blue-500 text-sm font-medium disabled:opacity-40"
             >
-              Post
+              {commentMutation.isPending
+                ? "Posting..."
+                : "Post"}
             </button>
           </div>
         </div>
@@ -202,10 +234,11 @@ export default function PostViewer({
     </div>
   );
 
-  // ================= MODAL
+  // MODAL
   if (variant === "modal") {
     return (
       <div className="fixed inset-0 z-[9999]">
+        {/* backdrop */}
         <div
           className="absolute inset-0 bg-black/80"
           onClick={onClose}
@@ -218,5 +251,6 @@ export default function PostViewer({
     );
   }
 
+  // PAGE MODE
   return <div className="flex justify-center">{content}</div>;
 }

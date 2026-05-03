@@ -1,16 +1,20 @@
+"use client";
+
+import { MessageCircle, Send, Bookmark } from "lucide-react";
+import { useRouter } from "next/navigation";
 import LikeButton from "@/components/LikeButton";
-import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { useRef } from "react";
 
 type PostCardProps = {
   postId: string;
-  image: string;
+  image?: string;
   caption: string;
   username: string;
-  avatar: string;
+  avatar?: string;
   likes: number;
   comments: number;
   isLiked?: boolean;
+  onOpen?: () => void;
 };
 
 export default function PostCard({
@@ -22,63 +26,120 @@ export default function PostCard({
   likes,
   comments,
   isLiked = false,
+  onOpen,
 }: PostCardProps) {
+  const router = useRouter();
+  const lastTap = useRef(0);
+
+  // 👉 ke profile
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/users/${username}`);
+  };
+
+  // 👉 double tap like
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300;
+
+    if (lastTap.current && now - lastTap.current < DOUBLE_PRESS_DELAY) {
+      // trigger like (optional: bisa pakai global state nanti)
+      console.log("DOUBLE TAP LIKE ❤️");
+    }
+
+    lastTap.current = now;
+  };
+
   return (
-    <div className="bg-zinc-900 rounded-2xl overflow-hidden shadow-lg">
-      
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4">
+    <article className="bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
+
+      {/* HEADER */}
+      <div className="flex items-center gap-3 px-4 pt-4 pb-2">
         <img
-          src={avatar || "/avatar-placeholder.png"}
-          alt={username}
-          className="w-9 h-9 rounded-full object-cover"
+          onClick={goToProfile}
+          src={avatar || "/avatar.png"}
+          onError={(e) => (e.currentTarget.src = "/avatar.png")}
+          className="w-9 h-9 rounded-full object-cover cursor-pointer"
         />
 
-        <span className="text-white font-semibold text-sm">
+        <span
+          onClick={goToProfile}
+          className="text-white font-semibold text-sm cursor-pointer hover:underline"
+        >
           {username}
         </span>
       </div>
 
-      {/* Post Image */}
-      <Link href={`/posts/${postId}`}>
+      {/* IMAGE */}
+      <div
+        onClick={onOpen}
+        onDoubleClick={handleDoubleTap}
+        className="cursor-pointer"
+      >
         <img
-          src={image}
-          alt={caption}
-          className="w-full h-[320px] object-cover cursor-pointer"
+          src={image || "/placeholder.png"}
+          onError={(e) => (e.currentTarget.src = "/placeholder.png")}
+          className="w-full h-[320px] object-cover hover:opacity-95 transition"
         />
-      </Link>
+      </div>
 
-      {/* Content */}
-      <div className="p-4 space-y-3">
+      {/* CONTENT */}
+      <div className="px-4 pb-4 pt-2 space-y-2">
 
-        {/* Actions */}
-        <div className="flex items-center gap-4">
-          
-          <LikeButton
-            postId={postId}
-            initialLiked={isLiked}
-            initialCount={likes}
-          />
+        {/* ACTION */}
+        <div className="flex items-center justify-between">
 
-          <Link
-            href={`/posts/${postId}`}
-            className="flex items-center gap-1 text-gray-400 hover:text-white"
-          >
-            <MessageCircle size={20} />
-            <span className="text-sm">{comments}</span>
-          </Link>
+          {/* LEFT */}
+          <div className="flex items-center gap-4">
+
+            {/* LIKE */}
+            <LikeButton
+              postId={postId}
+              initialLiked={isLiked}
+              initialCount={likes}
+            />
+
+            {/* COMMENT */}
+            <button
+              onClick={onOpen}
+              className="flex items-center gap-1 text-zinc-400 hover:text-white transition"
+            >
+              <MessageCircle size={20} />
+              <span className="text-xs">{comments}</span>
+            </button>
+
+            {/* SHARE */}
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/posts/${postId}`;
+                navigator.clipboard.writeText(url);
+              }}
+              className="flex items-center gap-1 text-zinc-400 hover:text-white transition"
+            >
+              <Send size={20} />
+            </button>
+
+          </div>
+
+          {/* SAVE */}
+          <button className="text-zinc-400 hover:text-white transition">
+            <Bookmark size={20} />
+          </button>
 
         </div>
 
-        {/* Caption */}
-        <p className="text-sm text-gray-300">
-          <span className="font-semibold text-white">
+        {/* CAPTION */}
+        <p className="text-sm text-gray-300 leading-relaxed">
+          <span
+            onClick={goToProfile}
+            className="font-semibold text-white mr-1 cursor-pointer hover:underline"
+          >
             {username}
-          </span>{" "}
+          </span>
           {caption}
         </p>
 
       </div>
-    </div>
+    </article>
   );
 }

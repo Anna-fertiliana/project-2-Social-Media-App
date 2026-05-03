@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Heart } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface LikeButtonProps {
   postId: string;
@@ -13,6 +16,7 @@ export default function LikeButton({
   initialLiked = false,
   initialCount = 0,
 }: LikeButtonProps) {
+  const queryClient = useQueryClient();
 
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
@@ -20,84 +24,67 @@ export default function LikeButton({
 
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
-  const [loading, setLoading] = useState(false);
 
-  const handleLike = async () => {
+  const mutation = useMutation({
+    mutationFn: async (isLiked: boolean) => {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token");
 
-    if (loading) return;
+      return fetch(`${API_URL}/api/posts/${postId}/like`, {
+        method: isLiked ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    },
 
-    const token = localStorage.getItem("token");
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    },
 
-    if (!token) {
-      alert("Please login first");
-      return;
-    }
-
-    const prevLiked = liked;
-    const prevCount = count;
-
-    setLoading(true);
-
-    try {
-
-      if (liked) {
-
-        setLiked(false);
-        setCount((c) => Math.max(0, c - 1));
-
-        await fetch(`${API_URL}/api/posts/${postId}/like`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-      } else {
-
-        setLiked(true);
-        setCount((c) => c + 1);
-
-        await fetch(`${API_URL}/api/posts/${postId}/like`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-      }
-
-    } catch (error) {
-
-      console.error(error);
-
+    onError: () => {
       // rollback
-      setLiked(prevLiked);
-      setCount(prevCount);
+      setLiked(initialLiked);
+      setCount(initialCount);
+    },
+  });
 
-    } finally {
+  const handleLike = () => {
+    if (mutation.isPending) return;
 
-      setLoading(false);
+    // optimistic update
+    setLiked((prev) => !prev);
+    setCount((prev) => (liked ? Math.max(0, prev - 1) : prev + 1));
 
-    }
-
+    mutation.mutate(liked);
   };
 
   return (
     <button
       onClick={handleLike}
-      className="flex items-center gap-1 text-sm"
+      className="flex items-center gap-1 group"
     >
-      <span
-        className={
-          liked
-            ? "text-red-500"
-            : "text-gray-400"
-        }
+      {/* ICON */}
+      <motion.div
+        key={liked ? "liked" : "unliked"}
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.2 }}
       >
-        ♥
-      </span>
+        <Heart
+          size={20}
+          className={`
+            transition
+            ${liked ? "text-red-500 fill-red-500" : "text-zinc-400"}
+            group-hover:text-white
+          `}
+        />
+      </motion.div>
 
-      <span>{count}</span>
+      {/* COUNT */}
+      <span className="text-sm text-zinc-300">
+        {count}
+      </span>
     </button>
   );
 }

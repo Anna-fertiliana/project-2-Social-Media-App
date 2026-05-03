@@ -29,9 +29,7 @@ export default function PostDetailPage() {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/posts/${id}`
       );
-
       const data = await res.json();
-
       if (res.ok) setPost(data.data);
     } catch (error) {
       console.error(error);
@@ -45,11 +43,9 @@ export default function PostDetailPage() {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/posts/${id}/comments`
       );
-
       const data = await res.json();
 
       let list: any[] = [];
-
       if (Array.isArray(data.data)) list = data.data;
       else if (Array.isArray(data.data?.comments)) list = data.data.comments;
       else if (Array.isArray(data.comments)) list = data.comments;
@@ -64,7 +60,6 @@ export default function PostDetailPage() {
 
   const handleAddComment = async (e: any) => {
     e.preventDefault();
-
     if (!commentText.trim()) return;
 
     try {
@@ -94,161 +89,135 @@ export default function PostDetailPage() {
     );
   }
 
-  if (!post) {
-    return (
-      <div className="h-screen flex items-center justify-center text-white">
-        Post not found
-      </div>
-    );
-  }
+  if (!post) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/80 z-50">
 
-      {/* MODAL */}
-      <div className="bg-zinc-900 w-[950px] h-[600px] rounded-xl overflow-hidden grid grid-cols-2 relative">
+      {/* CONTAINER */}
+      <div
+        className="
+          w-full h-full flex flex-col
+          md:items-center md:justify-center
+        "
+      >
 
-        {/* CLOSE BUTTON */}
-        <button
-          onClick={() => router.back()}
-          className="absolute top-4 right-4 text-white"
+        {/* MODAL */}
+        <div
+          className="
+            bg-zinc-900 w-full h-full flex flex-col
+            md:w-[900px] md:h-[600px] md:grid md:grid-cols-2 md:rounded-xl md:overflow-hidden
+          "
         >
-          <X size={22} />
-        </button>
 
-        {/* IMAGE */}
-        <div className="bg-black">
-          <img
-            src={post.imageUrl}
-            className="w-full h-full object-cover"
-          />
-        </div>
+          {/* CLOSE */}
+          <button
+            onClick={() => router.back()}
+            className="absolute top-4 right-4 text-white z-10"
+          >
+            <X size={22} />
+          </button>
 
-        {/* RIGHT PANEL */}
-        <div className="flex flex-col h-full">
-
-          {/* HEADER */}
-          <div className="flex items-center gap-3 p-4 border-b border-zinc-800">
-
+          {/* IMAGE */}
+          <div className="bg-black h-[300px] md:h-full">
             <img
-              src={post.author?.avatar || "/avatar-placeholder.png"}
-              className="w-8 h-8 rounded-full"
+              src={post.imageUrl}
+              className="w-full h-full object-cover"
             />
-
-            <span className="font-semibold text-white">
-              {post.author?.username}
-            </span>
-
           </div>
 
-          {/* CAPTION */}
-          <div className="p-4 border-b border-zinc-800 text-sm text-gray-300">
+          {/* RIGHT */}
+          <div className="flex flex-col h-full">
 
-            <span className="font-semibold text-white">
-              {post.author?.username}
-            </span>{" "}
-            {post.caption}
+            {/* HEADER */}
+            <div className="flex items-center gap-3 p-4 border-b border-zinc-800">
+              <img
+                src={post.author?.avatarUrl || "/avatar.png"}
+                className="w-8 h-8 rounded-full"
+              />
+              <span className="text-white font-semibold">
+                {post.author?.username}
+              </span>
+            </div>
 
-          </div>
+            {/* CAPTION */}
+            <div className="p-4 border-b border-zinc-800 text-sm text-gray-300">
+              <span className="font-semibold text-white mr-2">
+                {post.author?.username}
+              </span>
+              {post.caption}
+            </div>
 
-          {/* COMMENTS */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* COMMENTS */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-3">
+                  <img
+                    src={c.user?.avatarUrl || "/avatar.png"}
+                    className="w-7 h-7 rounded-full"
+                  />
+                  <p className="text-sm">
+                    <span className="font-semibold text-white mr-1">
+                      {c.user?.username}
+                    </span>
+                    <span className="text-gray-300">
+                      {c.content}
+                    </span>
+                  </p>
+                </div>
+              ))}
+            </div>
 
-            {commentLoading && (
-              <p className="text-xs text-gray-500">
-                Loading comments...
+            {/* ACTION */}
+            <div className="border-t border-zinc-800 p-4 space-y-3">
+
+              <div className="flex justify-between">
+                <div className="flex gap-4 text-white">
+                  <Heart size={22} />
+                  <MessageCircle size={22} />
+                  <Smile
+                    size={22}
+                    onClick={() => setShowEmoji(!showEmoji)}
+                  />
+                </div>
+                <Bookmark size={22} />
+              </div>
+
+              <p className="text-sm text-gray-400">
+                ❤️ {post.likesCount || 0} likes
               </p>
-            )}
 
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-3">
+              {showEmoji && (
+                <div className="absolute bottom-24 right-4">
+                  <EmojiPicker
+                    onEmojiClick={(e) =>
+                      setCommentText(commentText + e.emoji)
+                    }
+                  />
+                </div>
+              )}
 
-                <img
-                  src={c.user?.avatar || "/avatar-placeholder.png"}
-                  className="w-7 h-7 rounded-full"
+              <form
+                onSubmit={handleAddComment}
+                className="flex gap-2"
+              >
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add comment..."
+                  className="flex-1 bg-zinc-800 px-3 py-2 rounded-md text-sm outline-none"
                 />
 
-                <p className="text-sm">
-
-                  <span className="font-semibold text-white">
-                    {c.user?.username}
-                  </span>{" "}
-
-                  <span className="text-gray-300">
-                    {c.content}
-                  </span>
-
-                </p>
-
-              </div>
-            ))}
-
-          </div>
-
-          {/* ACTION ICONS */}
-          <div className="border-t border-zinc-800 p-4 space-y-3">
-
-            <div className="flex items-center justify-between">
-
-              <div className="flex gap-4 text-white">
-
-                <Heart size={22} className="cursor-pointer" />
-                <MessageCircle size={22} />
-                <Smile
-                  size={22}
-                  className="cursor-pointer"
-                  onClick={() => setShowEmoji(!showEmoji)}
-                />
-
-              </div>
-
-              <Bookmark size={22} />
+                <button className="text-blue-500 font-semibold text-sm">
+                  Post
+                </button>
+              </form>
 
             </div>
 
-            <p className="text-sm text-gray-400">
-              ❤️ {post.likesCount || 0} likes
-            </p>
-
-            {/* EMOJI PICKER */}
-            {showEmoji && (
-              <div className="absolute bottom-20 right-6">
-                <EmojiPicker
-                  onEmojiClick={(e) =>
-                    setCommentText(commentText + e.emoji)
-                  }
-                />
-              </div>
-            )}
-
-            {/* COMMENT INPUT */}
-            <form
-              onSubmit={handleAddComment}
-              className="flex items-center gap-2"
-            >
-
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Add comment..."
-                className="flex-1 bg-zinc-800 px-3 py-2 rounded-md text-sm outline-none"
-              />
-
-              <button
-                type="submit"
-                className="text-blue-500 font-semibold text-sm"
-              >
-                Post
-              </button>
-
-            </form>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

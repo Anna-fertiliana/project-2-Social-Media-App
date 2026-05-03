@@ -1,53 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { axiosInstance } from "@/lib/axios";
 import PostCard from "./PostCard";
+import { useState } from "react";
+import PostViewer from "./PostViewer";
 
 export default function Feed() {
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchFeed = async () => {
-      try {
-        const token = localStorage.getItem("token");
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["feed"],
+    queryFn: async () => {
+      const res = await axiosInstance.get("/api/posts");
+      return res.data;
+    },
+  });
 
-        const res = await fetch(
-          "https://be-social-media-api-production.up.railway.app/api/posts",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            cache: "no-store",
-          }
-        );
+  const posts = data?.data?.posts || [];
 
-        const data = await res.json();
-
-        console.log("Feed response:", data);
-
-        if (!data?.data?.posts) {
-          setPosts([]);
-          return;
-        }
-
-        setPosts(data.data.posts);
-
-      } catch (error) {
-        console.error("Feed error:", error);
-        setPosts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFeed();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="text-center text-gray-400 mt-10">
         Loading feed...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-center text-red-400 mt-10">
+        Failed to load feed
       </div>
     );
   }
@@ -61,22 +44,33 @@ export default function Feed() {
   }
 
   return (
-    <section className="flex justify-center px-4 mt-6">
-      <div className="w-full max-w-xl space-y-6">
-        {posts.map((post: any) => (
-          <PostCard
-            key={post.id}
-            postId={post.id}
-            image={post.imageUrl}
-            caption={post.caption}
-            username={post.author?.username}
-            avatar={post.author?.avatarUrl}
-            likes={post.likeCount}
-            comments={post.commentCount}
-            isLiked={post.likedByMe}
-          />
-        ))}
-      </div>
-    </section>
+    <>
+      <section className="flex justify-center px-4 mt-6">
+        <div className="w-full max-w-xl space-y-6">
+          {posts.map((post: any) => (
+            <PostCard
+              key={post.id}
+              postId={post.id}
+              image={post.imageUrl}
+              caption={post.caption}
+              username={post.author?.username}
+              avatar={post.author?.avatarUrl}
+              likes={post.likeCount}
+              comments={post.commentCount}
+              isLiked={post.likedByMe}
+              onOpen={() => setSelectedPostId(post.id)} // 🔥
+            />
+          ))}
+        </div>
+      </section>
+
+      {/*  MODAL */}
+      {selectedPostId && (
+        <PostViewer
+          postId={selectedPostId}
+          onClose={() => setSelectedPostId(null)}
+        />
+      )}
+    </>
   );
 }

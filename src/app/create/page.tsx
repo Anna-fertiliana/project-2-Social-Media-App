@@ -1,190 +1,177 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-export default function ProfilePage() {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+export default function CreatePostPage() {
+  const router = useRouter();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-  const [user, setUser] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-  const [loadingPosts, setLoadingPosts] = useState(true);
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  const handleImage = (file: File) => {
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+  };
 
-  useEffect(() => {
-    if (user) {
-      fetchMyPosts();
-    }
-  }, [user]);
+  const handleSubmit = async () => {
+    if (!image) return alert("Please upload an image");
 
-  const fetchProfile = async () => {
     try {
+      setLoading(true);
+
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`${API_URL}/api/me`, {
+      const formData = new FormData();
+      formData.append("image", image);
+      formData.append("caption", caption);
+
+      const res = await fetch(`${API_URL}/api/posts`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        body: formData,
       });
 
-      const data = await res.json();
-
       if (res.ok) {
-        setUser(data.data?.user || data.data);
+        setShowSuccess(true);
+        setTimeout(() => router.push("/feed"), 1500);
       }
-    } catch (error) {
-      console.error("Profile error:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setLoadingProfile(false);
+      setLoading(false);
     }
   };
-
-  const fetchMyPosts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        `${API_URL}/api/users/${user.username}/posts`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setPosts(data.data?.posts || []);
-      }
-    } catch (error) {
-      console.error("Posts error:", error);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
-
-  if (loadingProfile) {
-    return (
-      <div className="p-6 text-white text-center">
-        Loading profile...
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="p-6 text-white text-center">
-        Failed to load profile
-      </div>
-    );
-  }
 
   return (
-    <main className="max-w-md mx-auto text-white pb-24">
+    <main className="min-h-screen bg-black text-white">
 
-      {/* PROFILE HEADER */}
-      <div className="flex items-center justify-between p-4">
-
-        <div className="flex items-center gap-4">
-
-          <img
-            src={user.avatarUrl || "/avatar-placeholder.png"}
-            className="w-16 h-16 rounded-full object-cover"
-          />
-
-          <div>
-            <h1 className="font-bold text-lg">
-              {user.username}
-            </h1>
-
-            <p className="text-sm text-gray-400">
-              {user.email}
-            </p>
+      {/* SUCCESS */}
+      {showSuccess && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="bg-green-600 px-4 py-2 rounded-lg text-sm shadow-lg">
+            Success Post
           </div>
-
         </div>
-
-        <Link href="/me/edit">
-          <button className="px-3 py-1 text-sm border border-zinc-700 rounded-lg hover:bg-zinc-800">
-            Edit
-          </button>
-        </Link>
-
-      </div>
-
-      {/* BIO */}
-      {user.bio && (
-        <p className="px-4 text-sm text-gray-300">
-          {user.bio}
-        </p>
       )}
 
-      {/* STATS */}
-      <div className="flex justify-around text-sm border-y border-zinc-800 py-3 mt-4">
+      {/* CONTAINER */}
+      <div className="
+        w-full 
+        max-w-md 
+        mx-auto 
+        px-4 
+        pt-4 
+        pb-28
+        md:max-w-2xl
+      ">
 
-        <div className="text-center">
-          <p className="font-semibold">{posts.length}</p>
-          <p className="text-gray-400">Posts</p>
+        {/* HEADER */}
+        <div className="
+          flex items-center gap-3 mb-5
+          sticky top-0 bg-black z-10 py-2
+        ">
+          <button onClick={() => router.back()}>
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-lg font-semibold">Add Post</h1>
         </div>
 
-        <div className="text-center">
-          <p className="font-semibold">
-            {user.followersCount || 0}
-          </p>
-          <p className="text-gray-400">Followers</p>
+        {/* PHOTO */}
+        <p className="text-sm text-gray-400 mb-2">Photo</p>
+
+        <div className="mb-6">
+          {preview ? (
+            <img
+              src={preview}
+              className="
+                w-full 
+                h-52 
+                md:h-72 
+                object-cover 
+                rounded-xl
+              "
+            />
+          ) : (
+            <label className="
+              flex flex-col items-center justify-center 
+              h-52 md:h-72
+              border border-dashed border-zinc-700 
+              rounded-xl cursor-pointer text-center px-4
+            ">
+              <span className="text-blue-500 text-sm">
+                Click to upload
+              </span>
+
+              <span className="text-xs text-gray-500 mt-1">
+                or drag and drop
+              </span>
+
+              <span className="text-xs text-gray-600 mt-2">
+                PNG or JPG (max 5mb)
+              </span>
+
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) =>
+                  e.target.files && handleImage(e.target.files[0])
+                }
+              />
+            </label>
+          )}
         </div>
 
-        <div className="text-center">
-          <p className="font-semibold">
-            {user.followingCount || 0}
-          </p>
-          <p className="text-gray-400">Following</p>
-        </div>
+        {/* CAPTION */}
+        <p className="text-sm text-gray-400 mb-2">Caption</p>
+
+        <textarea
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Write your caption..."
+          className="
+            w-full 
+            bg-zinc-900 
+            border border-zinc-800 
+            rounded-xl 
+            p-3 
+            text-sm 
+            mb-6 
+            outline-none 
+            focus:border-purple-500
+            min-h-[100px]
+          "
+        />
 
       </div>
 
-      {/* POSTS GRID */}
-      <div className="mt-4">
-
-        {loadingPosts && (
-          <p className="text-center text-gray-400 py-10">
-            Loading posts...
-          </p>
-        )}
-
-        {!loadingPosts && posts.length === 0 && (
-          <p className="text-center text-gray-400 py-10">
-            No posts yet
-          </p>
-        )}
-
-        {!loadingPosts && posts.length > 0 && (
-
-          <div className="grid grid-cols-3 gap-1">
-
-            {posts.map((post) => (
-
-              <Link
-                key={post.id}
-                href={`/posts/${post.id}`}
-              >
-                <img
-                  src={post.imageUrl}
-                  className="aspect-square object-cover hover:opacity-80 transition"
-                />
-              </Link>
-
-            ))}
-
-          </div>
-
-        )}
-
+      {/* FLOATING BUTTON (IG STYLE) */}
+      <div className="
+        fixed bottom-0 left-0 right-0 
+        bg-black border-t border-zinc-800
+        p-4
+      ">
+        <div className="max-w-md mx-auto md:max-w-2xl">
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="
+              w-full py-3 rounded-xl font-semibold
+              bg-gradient-to-r from-purple-600 to-purple-500
+              disabled:opacity-50
+            "
+          >
+            {loading ? "Sharing..." : "Share"}
+          </button>
+        </div>
       </div>
 
     </main>

@@ -15,6 +15,7 @@ export default function CommentMobile({ postId, onClose }: Props) {
   const queryClient = useQueryClient();
   const [text, setText] = useState("");
 
+  // ✅ FETCH COMMENTS
   const { data, isLoading } = useQuery({
     queryKey: ["comments", postId],
     queryFn: async () => {
@@ -23,34 +24,81 @@ export default function CommentMobile({ postId, onClose }: Props) {
     },
   });
 
+  const comments = data?.data?.comments || [];
+
+  // ✅ MUTATION (OPTIMISTIC)
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (content: string) => {
       return axiosInstance.post(`/api/posts/${postId}/comments`, {
-        content: text,
+        content,
       });
     },
-    onSuccess: () => {
+
+    // 🔥 OPTIMISTIC UPDATE
+    onMutate: async (content) => {
+      await queryClient.cancelQueries({ queryKey: ["comments", postId] });
+
+      const previous = queryClient.getQueryData<any>([
+        "comments",
+        postId,
+      ]);
+
+      const fakeComment = {
+        id: Date.now(),
+        content,
+        user: {
+          username: "You",
+          avatarUrl: "/avatar.png",
+        },
+      };
+
+      queryClient.setQueryData(["comments", postId], (old: any) => {
+        const oldComments = old?.data?.comments || [];
+        return {
+          ...old,
+          data: {
+            ...old?.data,
+            comments: [...oldComments, fakeComment],
+          },
+        };
+      });
+
       setText("");
-      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
+
+      return { previous };
+    },
+
+    // ❌ rollback
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["comments", postId],
+          context.previous
+        );
+      }
+    },
+
+    // 🔄 sync ulang
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["comments", postId],
+      });
     },
   });
 
-  const comments = data?.data?.comments || [];
+  const handlePost = () => {
+    if (!text.trim()) return;
+    mutation.mutate(text);
+  };
 
   return (
     <div className="w-full h-full flex items-end">
 
       <motion.div
-        key="comment-sheet"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
-        transition={{
-          type: "spring",
-          stiffness: 100,
-          damping: 25,
-        }}
+        transition={{ type: "spring", stiffness: 100, damping: 25 }}
         className="w-full h-[88%] bg-zinc-900 rounded-t-2xl flex flex-col"
       >
 
@@ -82,8 +130,8 @@ export default function CommentMobile({ postId, onClose }: Props) {
               <div key={c.id} className="flex gap-3">
 
                 <img
-                  src={c.user?.image || "/avatar.png"}
-                  className="w-8 h-8 rounded-full"
+                  src={c.user?.avatarUrl || "/avatar.png"} // ✅ FIXED
+                  className="w-8 h-8 rounded-full object-cover"
                 />
 
                 <div>
@@ -96,7 +144,7 @@ export default function CommentMobile({ postId, onClose }: Props) {
                   </p>
 
                   <span className="text-xs text-gray-500">
-                    1 min ago
+                    just now
                   </span>
                 </div>
               </div>
@@ -114,8 +162,8 @@ export default function CommentMobile({ postId, onClose }: Props) {
           />
 
           <button
-            onClick={() => mutation.mutate()}
-            disabled={!text || mutation.isPending}
+            onClick={handlePost}
+            disabled={!text.trim() || mutation.isPending}
             className="text-blue-500 text-sm font-medium disabled:opacity-40"
           >
             Post

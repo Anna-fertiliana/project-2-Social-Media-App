@@ -11,7 +11,7 @@ import {
   Send,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LikeButton from "@/components/LikeButton";
 import SaveButton from "@/components/SaveButton";
 
@@ -28,8 +28,9 @@ export default function PostViewer({
 }: Props) {
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-
+  // disable scroll when modal
   useEffect(() => {
     if (variant !== "modal") return;
 
@@ -41,7 +42,7 @@ export default function PostViewer({
     };
   }, [variant]);
 
-  //  FETCH POST
+  // 🔹 FETCH POST
   const { data, isLoading } = useQuery({
     queryKey: ["post", postId],
     queryFn: async () => {
@@ -52,20 +53,81 @@ export default function PostViewer({
 
   const post = data?.data;
 
-  //  COMMENT
+  // 🔹 COMMENT MUTATION (🔥 FINAL)
   const commentMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (content: string) => {
       return axiosInstance.post(`/api/posts/${postId}/comments`, {
-        content: commentText,
+        content,
       });
     },
-    onSuccess: () => {
+
+    // ✅ OPTIMISTIC UPDATE
+    onMutate: async (content) => {
+      await queryClient.cancelQueries({ queryKey: ["post", postId] });
+
+      const previous = queryClient.getQueryData<any>([
+        "post",
+        postId,
+      ]);
+
+      const fakeComment = {
+        id: Date.now(),
+        content,
+        user: {
+          username: "You",
+          avatarUrl: "/avatar.png",
+        },
+      };
+
+      queryClient.setQueryData(["post", postId], (old: any) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            comments: [...(old.data.comments || []), fakeComment],
+            commentCount: (old.data.commentCount || 0) + 1,
+          },
+        };
+      });
+
       setCommentText("");
-      queryClient.invalidateQueries({ queryKey: ["post", postId] });
+
+      // auto scroll
+      setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+
+      return { previous };
+    },
+
+    // ❌ rollback kalau error
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(
+          ["post", postId],
+          context.previous
+        );
+      }
+    },
+
+    // 🔄 sync ke server
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["post", postId],
+      });
     },
   });
 
-  //  LOADING
+  const handlePost = () => {
+    if (!commentText.trim()) return;
+    if (commentMutation.isPending) return;
+
+    commentMutation.mutate(commentText);
+  };
+
+  // 🔹 LOADING
   if (isLoading) {
     return (
       <div className="text-white text-center mt-10 animate-pulse">
@@ -76,7 +138,7 @@ export default function PostViewer({
 
   if (!post) return null;
 
-  // MAIN CONTENT
+  // 🔹 MAIN CONTENT
   const content = (
     <div
       className="
@@ -100,6 +162,7 @@ export default function PostViewer({
 
       {/* RIGHT */}
       <div className="w-full md:w-1/2 flex flex-col">
+
         {/* HEADER */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
           <div className="flex items-center gap-3">
@@ -108,7 +171,7 @@ export default function PostViewer({
               onError={(e) =>
                 (e.currentTarget.src = "/avatar.png")
               }
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8 rounded-full object-cover"
             />
             <span className="text-white text-sm font-semibold">
               {post.author?.username}
@@ -141,7 +204,7 @@ export default function PostViewer({
               <div key={c.id} className="flex gap-3">
                 <img
                   src={c.user?.avatarUrl || "/avatar.png"}
-                  className="w-7 h-7 rounded-full"
+                  className="w-7 h-7 rounded-full object-cover"
                 />
                 <p className="text-gray-300">
                   <span className="font-semibold text-white mr-2">
@@ -152,13 +215,18 @@ export default function PostViewer({
               </div>
             ))
           )}
+
+          {/* scroll target */}
+          <div ref={bottomRef} />
         </div>
 
         {/* ACTION */}
         <div className="border-t border-zinc-800 px-4 py-3 space-y-2">
+
           {/* ICONS */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
+
               {/* LIKE */}
               <LikeButton
                 postId={postId}
@@ -207,17 +275,14 @@ export default function PostViewer({
               placeholder="Add a comment..."
               className="flex-1 bg-transparent outline-none text-sm text-white"
               onKeyDown={(e) => {
-                if (
-                  e.key === "Enter" &&
-                  !commentMutation.isPending
-                ) {
-                  commentMutation.mutate();
+                if (e.key === "Enter") {
+                  handlePost();
                 }
               }}
             />
 
             <button
-              onClick={() => commentMutation.mutate()}
+              onClick={handlePost}
               disabled={
                 !commentText.trim() ||
                 commentMutation.isPending
@@ -234,11 +299,10 @@ export default function PostViewer({
     </div>
   );
 
-  // MODAL
+  // 🔹 MODAL
   if (variant === "modal") {
     return (
       <div className="fixed inset-0 z-[9999]">
-        {/* backdrop */}
         <div
           className="absolute inset-0 bg-black/80"
           onClick={onClose}
@@ -251,6 +315,6 @@ export default function PostViewer({
     );
   }
 
-  // PAGE MODE
+  // 🔹 PAGE
   return <div className="flex justify-center">{content}</div>;
 }

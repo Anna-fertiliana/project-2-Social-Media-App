@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -16,8 +16,6 @@ export default function LikeButton({
   initialLiked = false,
   initialCount = 0,
 }: LikeButtonProps) {
-  const queryClient = useQueryClient();
-
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
     "https://be-social-media-api-production.up.railway.app";
@@ -26,37 +24,51 @@ export default function LikeButton({
   const [count, setCount] = useState(initialCount);
 
   const mutation = useMutation({
-    mutationFn: async (isLiked: boolean) => {
+    mutationFn: async (nextLiked: boolean) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No token");
 
-      return fetch(`${API_URL}/api/posts/${postId}/like`, {
-        method: isLiked ? "DELETE" : "POST",
+      const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+        method: nextLiked ? "POST" : "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (!res.ok) {
+        throw new Error("Failed to update like");
+      }
+
+      return res.json();
     },
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    // ✅ OPTIMISTIC UPDATE (BENAR)
+    onMutate: async (nextLiked) => {
+      const prevLiked = liked;
+      const prevCount = count;
+
+      setLiked(nextLiked);
+      setCount((prev) =>
+        nextLiked ? prev + 1 : Math.max(0, prev - 1)
+      );
+
+      return { prevLiked, prevCount };
     },
 
-    onError: () => {
-      // rollback
-      setLiked(initialLiked);
-      setCount(initialCount);
+    // ❌ ERROR → rollback
+    onError: (_err, _vars, context) => {
+      if (context) {
+        setLiked(context.prevLiked);
+        setCount(context.prevCount);
+      }
     },
   });
 
   const handleLike = () => {
     if (mutation.isPending) return;
 
-    // optimistic update
-    setLiked((prev) => !prev);
-    setCount((prev) => (liked ? Math.max(0, prev - 1) : prev + 1));
-
-    mutation.mutate(liked);
+    const nextLiked = !liked;
+    mutation.mutate(nextLiked);
   };
 
   return (

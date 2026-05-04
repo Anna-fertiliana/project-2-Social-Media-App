@@ -7,6 +7,8 @@ import Link from "next/link";
 import { Bookmark, Send } from "lucide-react";
 
 export default function ProfilePage() {
+  const [mounted, setMounted] = useState(false);
+
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -17,28 +19,41 @@ export default function ProfilePage() {
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [showToast, setShowToast] = useState(false);
 
-  // 🔹 helper
-  const getToken = () => localStorage.getItem("token");
+  // ✅ FIX: pastikan hanya jalan di client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
+  // 🔹 SAFE TOKEN
+  const getToken = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("token");
+  };
+
+  // 🔹 SAFE FETCHER
   const fetcher = async (url: string) => {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}${url}`,
-      {
-        headers: {
-          Authorization: `Bearer ${getToken()}`,
-        },
-        cache: "no-store",
-      }
-    );
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!baseUrl) {
+      console.error("API URL not found");
+      return { data: {} };
+    }
+
+    const res = await fetch(`${baseUrl}${url}`, {
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+      cache: "no-store",
+    });
 
     const data = await res.json();
-    if (!res.ok) throw new Error("Fetch error");
-
     return data;
   };
 
   // 🔹 FETCH DATA
   useEffect(() => {
+    if (!mounted) return;
+
     const load = async () => {
       try {
         const [profile, myPosts, saved] = await Promise.all([
@@ -47,10 +62,10 @@ export default function ProfilePage() {
           fetcher("/api/me/saved"),
         ]);
 
-        setUser(profile.data.profile);
-        setStats(profile.data.stats);
-        setPosts(myPosts.data?.items || []);
-        setSavedPosts(saved.data?.items || []);
+        setUser(profile?.data?.profile);
+        setStats(profile?.data?.stats);
+        setPosts(myPosts?.data?.items || []);
+        setSavedPosts(saved?.data?.items || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -60,11 +75,11 @@ export default function ProfilePage() {
     };
 
     load();
-  }, []);
+  }, [mounted]);
 
-  // 🔹 TOAST (FIX tanpa useSearchParams)
+  // 🔹 TOAST (SAFE)
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!mounted) return;
 
     const params = new URLSearchParams(window.location.search);
 
@@ -73,10 +88,12 @@ export default function ProfilePage() {
       const t = setTimeout(() => setShowToast(false), 3000);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [mounted]);
 
   // 🔹 SHARE
   const handleShare = async () => {
+    if (!user) return;
+
     const url = `${window.location.origin}/users/${user.username}`;
 
     try {
@@ -90,6 +107,9 @@ export default function ProfilePage() {
       alert("Failed to share");
     }
   };
+
+  // ❗ PENTING: cegah render saat build
+  if (!mounted) return null;
 
   if (loading) {
     return <div className="text-white text-center py-10">Loading...</div>;

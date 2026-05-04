@@ -1,11 +1,10 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Bookmark, Send } from "lucide-react";
-
-export const dynamic = "force-dynamic"; // 🔥 biar aman dari prerender error
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -16,11 +15,9 @@ export default function ProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
-
-  const searchParams = useSearchParams();
   const [showToast, setShowToast] = useState(false);
 
-  // 🔥 HELPER (biar ga ulang2)
+  // 🔹 helper
   const getToken = () => localStorage.getItem("token");
 
   const fetcher = async (url: string) => {
@@ -40,7 +37,7 @@ export default function ProfilePage() {
     return data;
   };
 
-  // 🔹 FETCH ALL
+  // 🔹 FETCH DATA
   useEffect(() => {
     const load = async () => {
       try {
@@ -65,14 +62,18 @@ export default function ProfilePage() {
     load();
   }, []);
 
-  // 🔹 TOAST
+  // 🔹 TOAST (FIX tanpa useSearchParams)
   useEffect(() => {
-    if (searchParams.get("updated") === "true") {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("updated") === "true") {
       setShowToast(true);
       const t = setTimeout(() => setShowToast(false), 3000);
       return () => clearTimeout(t);
     }
-  }, [searchParams]);
+  }, []);
 
   // 🔹 SHARE
   const handleShare = async () => {

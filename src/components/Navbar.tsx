@@ -191,13 +191,13 @@ export default function Navbar() {
               {open && (
                 <div className="absolute right-0 mt-2 w-44 bg-zinc-900 border border-zinc-800 rounded-xl shadow-lg overflow-hidden">
 
-                  <Link
+                  {/* <Link
                     href="/profile"
                     className="block px-4 py-2 text-sm hover:bg-zinc-800"
                     onClick={() => setOpen(false)}
                   >
                     Profile
-                  </Link>
+                  </Link> */}
 
                   <button
                     onClick={logout}

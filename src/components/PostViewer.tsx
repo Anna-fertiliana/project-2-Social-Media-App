@@ -267,39 +267,49 @@ export default function PostViewer({
             />
           </div>
 
-          {/* INPUT COMMENT */}
-          <div className="flex items-center gap-2 border-t border-zinc-800 pt-3">
-            <input
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 bg-transparent outline-none text-sm text-white"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handlePost();
-                }
-              }}
-            />
+          {/* INPUT COMMENT (FIGMA STYLE) */}
+          <div className="border-t border-zinc-800 pt-3">
 
-            <button
-              onClick={handlePost}
-              disabled={
-                !commentText.trim() ||
-                commentMutation.isPending
-              }
-              className="text-blue-500 text-sm font-medium disabled:opacity-40"
-            >
-              {commentMutation.isPending
-                ? "Posting..."
-                : "Post"}
-            </button>
+            <div className="flex items-center gap-2 bg-zinc-800/60 rounded-full px-3 py-2">
+
+              {/* EMOJI */}
+              <button
+                type="button"
+                className="text-lg hover:scale-110 transition"
+                onClick={() => setCommentText((prev) => prev + "😊")}
+              >
+                😊
+              </button>
+
+              {/* INPUT */}
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write a comment..."
+                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-gray-400"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handlePost();
+                }}
+              />
+
+              {/* SEND */}
+              <button
+                onClick={handlePost}
+                disabled={!commentText.trim() || commentMutation.isPending}
+                className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:opacity-40 transition flex items-center justify-center"
+              >
+                <Send size={16} className="text-white" />
+              </button>
+
+            </div>
+
           </div>
-        </div>
+          </div>
       </div>
     </div>
   );
 
-  // 🔹 MODAL
+  //  MODAL
   if (variant === "modal") {
     return (
       <div className="fixed inset-0 z-[9999]">

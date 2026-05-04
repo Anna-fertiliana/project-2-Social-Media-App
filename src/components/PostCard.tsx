@@ -134,7 +134,7 @@ export default function PostCard({
 
           </div>
 
-          {/* 🔥 SAVE (API CONNECTED) */}
+          {/* SAVE (API CONNECTED) */}
           <SaveButton
             postId={postId}
             initialSaved={isSaved}

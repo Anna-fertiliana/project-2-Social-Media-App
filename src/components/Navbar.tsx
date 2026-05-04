@@ -21,17 +21,13 @@ export default function Navbar() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-
-  // GET USER
-
+  // 🔹 GET USER
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
-
-  // CLOSE DROPDOWN (PROFILE)
-
+  // 🔹 CLOSE DROPDOWN
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -47,9 +43,7 @@ export default function Navbar() {
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-  // 🔍 SEARCH 
-
+  // 🔍 SEARCH
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
@@ -65,12 +59,9 @@ export default function Navbar() {
         );
 
         const data = await res.json();
-
-        const users =
-           data?.data?.users || [];
+        const users = data?.data?.users || [];
 
         setResults(Array.isArray(users) ? users : []);
-
       } catch (err) {
         console.error("SEARCH ERROR:", err);
         setResults([]);
@@ -82,9 +73,7 @@ export default function Navbar() {
     return () => clearTimeout(delay);
   }, [query]);
 
-
-  // LOGOUT
-
+  // 🔹 LOGOUT
   const logout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
@@ -105,7 +94,6 @@ export default function Navbar() {
 
         {/* 🔍 SEARCH */}
         <div className="flex-1 max-w-md relative">
-
           <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
 
           <input
@@ -168,6 +156,7 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
 
           {user ? (
+            // ✅ USER LOGGED IN
             <div className="relative" ref={dropdownRef}>
 
               <button
@@ -191,13 +180,13 @@ export default function Navbar() {
               {open && (
                 <div className="absolute right-0 mt-2 w-44 bg-zinc-900 border border-zinc-800 rounded-xl shadow-lg overflow-hidden">
 
-                  {/* <Link
+                  <Link
                     href="/profile"
                     className="block px-4 py-2 text-sm hover:bg-zinc-800"
                     onClick={() => setOpen(false)}
                   >
                     Profile
-                  </Link> */}
+                  </Link>
 
                   <button
                     onClick={logout}
@@ -210,12 +199,24 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="text-sm text-zinc-300 hover:text-white"
-            >
-              Login
-            </Link>
+            // ❗ NOT LOGGED IN
+            <div className="flex items-center gap-3">
+
+              <Link
+                href="/login"
+                className="text-sm text-zinc-300 hover:text-white"
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/register"
+                className="text-sm bg-white text-black px-3 py-1.5 rounded-full font-medium hover:bg-gray-200 transition"
+              >
+                Register
+              </Link>
+
+            </div>
           )}
 
         </div>

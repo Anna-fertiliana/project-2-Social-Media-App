@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Social Media App 
 
-## Getting Started
+A modern Instagram-like social media platform built with Next.js, Tailwind CSS, React Query, and REST API backend, deployed on Vercel.
 
-First, run the development server:
+This project demonstrates a fully functional social media experience including user profiles, follow system, posts feed, and profile interactions.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+🔗 Live Demo:
+https://project-2-git-main-anna-fertilianas-projects.vercel.app/
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+✨ Features
+👤 User System
+User authentication (JWT-based)
+Profile page with avatar, bio, and username
+Dynamic user profile routing (/users/[username])
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+📸 Posts System
+Create and display image posts
+Grid-based Instagram-style gallery
+Post detail navigation
+Like count preview on hover (desktop)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+👥 Follow System
+Follow / Unfollow users
+Followers & Following pages
+Real-time follow status indicator
+Mutual follow indicator ("Follows you")
 
-## Learn More
+📊 Profile Features
+Profile stats:
+Posts count
+Followers count
+Following count
+Clickable stats navigation:
+/followers
+/following
+Edit profile page
+Share profile feature
 
-To learn more about Next.js, take a look at the following resources:
+🧭 UI / UX Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Responsive mobile-first design
+Instagram-like layout
+Tabs (Gallery / Liked / Saved)
+Sticky header on detail pages
+Skeleton loading states
+Empty state handling
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+⚡ Performance & Tech
 
-## Deploy on Vercel
+Next.js App Router
+React Query for server state caching
+Axios instance for API handling
+Optimized image rendering
+Component-based architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+🧱 Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Frontend
+
+Next.js 14 (App Router)
+React
+Tailwind CSS
+Lucide Icons
+
+State & Data
+
+React Query
+Axios
+
+Backend (API)
+
+REST API (JWT Authentication)
+User, Post, Follow endpoints
+
+Deployment
+
+Vercel
+📂 Main Pages
+/ → Feed (posts)
+/users/[username] → User profile
+/users/[username]/followers
+/users/[username]/following
+/me → My profile
+/me/edit → Edit profile
+/posts/[id] → Post detail
+🧠 Key Highlights (Project Goals)
+
+This project was built to practice:
+
+Real-world social media architecture
+Follow graph system (followers/following logic)
+Profile-based routing in Next.js
+API integration with React Query caching
+Clean UI cloning of Instagram behavior
+Scalable component structure
+
+🚀 Future Improvements
+
+Infinite scroll feed
+Real-time notifications
+Direct messaging system
+Post comments system
+Story feature (Instagram Stories clone)
+Optimistic UI updates for follow system
+Image upload compression
+
+📸 Preview
+
+Instagram-like UI with profile pages, post grid, and follow system.

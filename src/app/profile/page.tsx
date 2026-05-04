@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Share2, Bookmark, Send } from "lucide-react";
+import { Bookmark, Send } from "lucide-react";
+
+export const dynamic = "force-dynamic"; // 🔥 biar aman dari prerender error
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -12,99 +14,83 @@ export default function ProfilePage() {
   const [savedPosts, setSavedPosts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"gallery" | "saved">("gallery");
 
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
   const searchParams = useSearchParams();
   const [showToast, setShowToast] = useState(false);
 
+  // 🔥 HELPER (biar ga ulang2)
+  const getToken = () => localStorage.getItem("token");
+
+  const fetcher = async (url: string) => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}${url}`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error("Fetch error");
+
+    return data;
+  };
+
+  // 🔹 FETCH ALL
   useEffect(() => {
-    fetchProfile();
-    fetchMyPosts();
-    fetchSavedPosts();
+    const load = async () => {
+      try {
+        const [profile, myPosts, saved] = await Promise.all([
+          fetcher("/api/me"),
+          fetcher("/api/me/posts"),
+          fetcher("/api/me/saved"),
+        ]);
+
+        setUser(profile.data.profile);
+        setStats(profile.data.stats);
+        setPosts(myPosts.data?.items || []);
+        setSavedPosts(saved.data?.items || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+        setLoadingPosts(false);
+      }
+    };
+
+    load();
   }, []);
 
+  // 🔹 TOAST
   useEffect(() => {
     if (searchParams.get("updated") === "true") {
       setShowToast(true);
-      const timer = setTimeout(() => setShowToast(false), 3000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setShowToast(false), 3000);
+      return () => clearTimeout(t);
     }
   }, [searchParams]);
 
-  const fetchProfile = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setUser(data.data.profile);
-        setStats(data.data.stats);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingProfile(false);
-    }
-  };
-
-  const fetchMyPosts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/me/posts`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setPosts(data.data?.items || []);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
-
-  const fetchSavedPosts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/me/saved`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSavedPosts(data.data?.items || []);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
+  // 🔹 SHARE
   const handleShare = async () => {
-    const profileUrl = `${window.location.origin}/users/${user.username}`;
+    const url = `${window.location.origin}/users/${user.username}`;
 
     try {
-      await navigator.clipboard.writeText(profileUrl);
-      alert("Profile link copied!");
+      if (navigator.share) {
+        await navigator.share({ url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied!");
+      }
     } catch {
-      alert("Failed to copy link");
+      alert("Failed to share");
     }
   };
 
-  if (loadingProfile) {
+  if (loading) {
     return <div className="text-white text-center py-10">Loading...</div>;
   }
 
@@ -124,17 +110,14 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* CONTAINER */}
       <div className="max-w-2xl mx-auto">
 
         {/* HEADER */}
         <div className="px-4 pt-6">
-
           <div className="flex items-start justify-between">
 
             {/* LEFT */}
             <div className="flex items-center gap-4">
-
               <img
                 src={user.avatarUrl || "/avatar-placeholder.png"}
                 className="w-14 h-14 rounded-full object-cover border border-zinc-700"
@@ -144,43 +127,29 @@ export default function ProfilePage() {
                 <p className="font-semibold text-sm">{user.name}</p>
                 <p className="text-xs text-gray-400">@{user.username}</p>
               </div>
-
             </div>
 
-            {/* RIGHT ACTION */}
+            {/* RIGHT */}
             <div className="flex items-center gap-2">
-
               <Link href="/me/edit">
                 <button className="px-3 py-1 text-xs rounded-full border border-zinc-700 hover:bg-zinc-800">
                   Edit Profile
                 </button>
               </Link>
 
-              {/* SHARE BUTTON (FIGMA STYLE) */}
               <button
-                onClick={() => {
-                const url = `${window.location.origin}/users/${user.username}`;
-
-                if (navigator.share) {
-                  navigator.share({ url });
-                } else {
-                  navigator.clipboard.writeText(url);
-                  alert("Link copied!");
-                }
-              }}
+                onClick={handleShare}
                 className="text-zinc-400 hover:text-white transition"
               >
                 <Send size={20} />
               </button>
             </div>
-
           </div>
 
           {/* BIO */}
           <p className="text-xs text-gray-300 mt-3 max-w-lg">
             {user.bio || "No bio yet"}
           </p>
-
         </div>
 
         {/* STATS */}
@@ -225,8 +194,7 @@ export default function ProfilePage() {
                 : "text-gray-400"
             }`}
           >
-            <span>▦</span>
-            Gallery
+            ▦ Gallery
           </button>
 
           <button
@@ -237,8 +205,7 @@ export default function ProfilePage() {
                 : "text-gray-400"
             }`}
           >
-            <Bookmark size={14} />
-            Saved
+            <Bookmark size={14} /> Saved
           </button>
 
         </div>

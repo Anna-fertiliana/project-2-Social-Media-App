@@ -19,7 +19,7 @@ export default function ProfilePage() {
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // 🔹 SAFE FETCHER (Bearer Token)
+
   const fetcher = async (url: string) => {
     try {
       const token =
@@ -43,7 +43,7 @@ export default function ProfilePage() {
     }
   };
 
-  // 🔹 LOAD DATA
+  // LOAD DATA
   useEffect(() => {
     const load = async () => {
       try {
@@ -81,7 +81,9 @@ export default function ProfilePage() {
     }
   }, []);
 
-  // 🔹 SHARE
+  // trigger redeploy
+
+  //  SHARE
   const handleShare = async () => {
     if (!user) return;
 
